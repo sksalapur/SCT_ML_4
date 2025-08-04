@@ -32,24 +32,41 @@ def load_gesture_model():
         # Try to load local model first
         if os.path.exists("balanced_gesture_model.h5"):
             model = load_model("balanced_gesture_model.h5")
-            return model, "Local model loaded"
+            return model, "✅ Local model loaded successfully"
         
-        # Download model from GitHub releases or cloud storage
+        # Download model from GitHub releases
         model_url = "https://github.com/sksalapur/SCT_ML_4/releases/download/v1.0/balanced_gesture_model.h5"
         
-        with st.spinner("Downloading model... (first time only)"):
+        with st.spinner("📥 Downloading model... (first time only)"):
             try:
-                response = requests.get(model_url)
+                response = requests.get(model_url, timeout=30)
                 if response.status_code == 200:
                     with tempfile.NamedTemporaryFile(delete=False, suffix='.h5') as tmp_file:
                         tmp_file.write(response.content)
                         model = load_model(tmp_file.name)
-                        return model, "Model downloaded successfully"
-            except:
-                pass
+                        return model, "✅ Model downloaded and loaded successfully"
+                else:
+                    st.warning(f"⚠️ Could not download model (Status: {response.status_code})")
+            except requests.exceptions.RequestException as e:
+                st.warning(f"⚠️ Network error: {str(e)}")
+            except Exception as e:
+                st.warning(f"⚠️ Download error: {str(e)}")
         
-        # Fallback error
-        return None, "❌ Could not load model. Please check the model file."
+        # Show helpful error message
+        return None, """
+        ❌ **Could not load model. Please try:**
+        
+        1. **Upload model to GitHub Releases:**
+           - Go to: https://github.com/sksalapur/SCT_ML_4/releases/new
+           - Tag: v1.0
+           - Upload: balanced_gesture_model.h5
+        
+        2. **Or test with sample images:**
+           - The image upload mode should still work
+           - Try uploading a hand gesture photo
+        
+        3. **Check your internet connection**
+        """
         
     except Exception as e:
         return None, f"❌ Error loading model: {str(e)}"
@@ -180,78 +197,76 @@ def main():
     elif app_mode == "📹 Webcam (Live)":
         st.header("Live Webcam Gesture Recognition")
         
-        # Webcam controls
-        run_webcam = st.checkbox("🎥 Start Webcam")
+        # Webcam note for Streamlit Cloud
+        st.info("📸 **Camera Mode**: Click 'Take Photo' to capture and analyze your gesture!")
         
-        if run_webcam:
-            # Create placeholder for webcam feed
-            FRAME_WINDOW = st.image([])
+        # Use Streamlit's camera input instead of OpenCV VideoCapture
+        camera_image = st.camera_input("📷 Take a photo of your gesture")
+        
+        if camera_image is not None:
+            # Process the captured image
+            image = Image.open(camera_image)
             
-            # Create placeholder for predictions
-            prediction_placeholder = st.empty()
+            # Display the captured image
+            col1, col2 = st.columns([1, 1])
             
-            # Try to access webcam
-            try:
-                cap = cv2.VideoCapture(0)
+            with col1:
+                st.image(image, caption="📸 Captured Gesture", use_column_width=True)
+            
+            with col2:
+                # Make prediction
+                with st.spinner("🤖 Analyzing gesture..."):
+                    predicted_class, confidence, all_predictions = predict_gesture(model, image)
                 
-                if not cap.isOpened():
-                    st.error("❌ Could not access webcam. Please check your camera permissions.")
+                # Display main prediction
+                if confidence > 0.5:
+                    st.success(f"✅ **Detected: {predicted_class}**")
+                    st.metric("Confidence", f"{confidence:.1%}")
                 else:
-                    st.success("✅ Webcam connected!")
-                    
-                    # Webcam loop
-                    frame_count = 0
-                    current_prediction = "No gesture detected"
-                    current_confidence = 0.0
-                    
-                    while run_webcam:
-                        ret, frame = cap.read()
-                        if not ret:
-                            st.error("Failed to read from webcam")
-                            break
-                        
-                        frame_count += 1
-                        frame = cv2.flip(frame, 1)  # Mirror effect
-                        
-                        # Make prediction every 5 frames for performance
-                        if frame_count % 5 == 0:
-                            try:
-                                predicted_class, confidence, _ = predict_gesture(model, frame)
-                                if confidence > 0.3:  # Lower threshold for live demo
-                                    current_prediction = predicted_class
-                                    current_confidence = confidence
-                            except:
-                                pass
-                        
-                        # Draw prediction on frame
-                        if current_confidence > 0.3:
-                            color = (0, 255, 0) if current_confidence > 0.6 else (0, 255, 255)
-                            cv2.rectangle(frame, (10, 10), (500, 80), (0, 0, 0), -1)
-                            cv2.putText(frame, f"Gesture: {current_prediction}", 
-                                       (20, 35), cv2.FONT_HERSHEY_SIMPLEX, 0.8, color, 2)
-                            cv2.putText(frame, f"Confidence: {current_confidence:.1%}", 
-                                       (20, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 0), 1)
-                        
-                        # Convert BGR to RGB for Streamlit
-                        frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                        FRAME_WINDOW.image(frame_rgb)
-                        
-                        # Update prediction display
-                        if current_confidence > 0.3:
-                            prediction_placeholder.metric(
-                                f"Current Gesture: {current_prediction.upper()}", 
-                                f"{current_confidence:.1%}"
-                            )
-                        
-                        time.sleep(0.1)  # Control frame rate
+                    st.warning(f"🤔 **Possible: {predicted_class}**")
+                    st.metric("Confidence", f"{confidence:.1%}")
+                    st.info("Try repositioning your hand for better detection")
                 
-                cap.release()
-                
-            except Exception as e:
-                st.error(f"Webcam error: {str(e)}")
+                # Show all predictions
+                st.subheader("📊 All Gesture Confidences")
+                for gesture, conf in all_predictions:
+                    # Create color-coded progress bars
+                    if conf > 0.7:
+                        st.success(f"{gesture}: {conf:.1%}")
+                    elif conf > 0.3:
+                        st.warning(f"{gesture}: {conf:.1%}")
+                    else:
+                        st.info(f"{gesture}: {conf:.1%}")
         
         else:
-            st.info("👆 Check the box above to start webcam recognition!")
+            # Show instructions when no image is captured
+            st.markdown("""
+            ### 👋 How to Use:
+            1. **Click 'Take Photo'** button above
+            2. **Position your hand** in front of the camera
+            3. **Make a clear gesture** from the supported list
+            4. **Capture the photo** and see instant results!
+            
+            ### 🎯 Supported Gestures:
+            """)
+            
+            # Display gesture examples in a nice grid
+            gesture_cols = st.columns(4)
+            gestures_info = {
+                "👊 Fist": "Closed fist facing camera",
+                "👋 Palm": "Open palm facing camera", 
+                "👆 Index": "Index finger pointing up",
+                "👌 OK": "Thumb and index finger circle",
+                "👍 Thumb": "Thumbs up gesture",
+                "🤏 C-Shape": "C-shaped hand gesture",
+                "👇 Down": "Index finger pointing down",
+                "🤟 L-Shape": "L-shaped hand (index + thumb)"
+            }
+            
+            for i, (gesture, desc) in enumerate(gestures_info.items()):
+                with gesture_cols[i % 4]:
+                    st.markdown(f"**{gesture}**")
+                    st.caption(desc)
     
     elif app_mode == "ℹ️ About":
         st.header("About This App")
