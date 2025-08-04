@@ -26,7 +26,7 @@ def download_model():
     # Model URLs (you'll need to upload to one of these)
     model_urls = [
         # GitHub Releases (recommended for <100MB files)
-        "https://github.com/YOUR_USERNAME/gesture-recognition/releases/download/v1.0/balanced_gesture_model.h5",
+        "https://github.com/sksalapur/SCT_ML_4/releases/download/v1.0/balanced_gesture_model.h5",
         
         # Google Drive (for larger files)
         "https://drive.google.com/uc?id=YOUR_GOOGLE_DRIVE_FILE_ID",
