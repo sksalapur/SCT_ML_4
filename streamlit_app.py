@@ -35,7 +35,7 @@ def load_gesture_model():
             return model, "Local model loaded"
         
         # Download model from GitHub releases or cloud storage
-        model_url = "https://github.com/YOUR_USERNAME/gesture-recognition/releases/download/v1.0/balanced_gesture_model.h5"
+        model_url = "https://github.com/sksalapur/SCT_ML_4/releases/download/v1.0/balanced_gesture_model.h5"
         
         with st.spinner("Downloading model... (first time only)"):
             try:
