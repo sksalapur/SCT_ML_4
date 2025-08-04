@@ -97,23 +97,35 @@ def preprocess_image(image):
     return batch
 
 def predict_gesture(model, image):
-    """Predict gesture from image"""
+    """Predict gesture from image with bias correction"""
     class_names = ['c_shape', 'down', 'fist', 'index', 'l_shape', 'ok', 'palm', 'thumb']
     
     processed = preprocess_image(image)
     predictions = model.predict(processed, verbose=0)
     
-    # Debug: Show raw predictions
-    st.write("🔍 **Debug - Raw Predictions:**")
+    # Apply bias correction - reduce the bias towards 'down' and 'fist'
+    # These appear to be overrepresented in the model's default predictions
+    bias_correction = np.array([1.0, 0.7, 0.8, 1.2, 1.3, 1.1, 1.0, 1.1])  # Reduce down/fist, boost others
+    corrected_predictions = predictions[0] * bias_correction
+    
+    # Renormalize to ensure sum = 1
+    corrected_predictions = corrected_predictions / np.sum(corrected_predictions)
+    
+    # Debug: Show both original and corrected predictions
+    st.write("🔍 **Debug - Original Predictions:**")
     for i, (class_name, prob) in enumerate(zip(class_names, predictions[0])):
         st.write(f"{class_name}: {prob:.4f}")
     
-    predicted_idx = np.argmax(predictions)
-    predicted_class = class_names[predicted_idx]
-    confidence = predictions[0][predicted_idx]
+    st.write("🔍 **Debug - Bias-Corrected Predictions:**")
+    for i, (class_name, prob) in enumerate(zip(class_names, corrected_predictions)):
+        st.write(f"{class_name}: {prob:.4f}")
     
-    # Get all predictions for display
-    all_predictions = [(class_names[i], predictions[0][i]) for i in range(len(class_names))]
+    predicted_idx = np.argmax(corrected_predictions)
+    predicted_class = class_names[predicted_idx]
+    confidence = corrected_predictions[predicted_idx]
+    
+    # Get all predictions for display (using corrected predictions)
+    all_predictions = [(class_names[i], corrected_predictions[i]) for i in range(len(class_names))]
     all_predictions.sort(key=lambda x: x[1], reverse=True)
     
     return predicted_class, confidence, all_predictions
