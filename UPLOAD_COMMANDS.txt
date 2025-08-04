@@ -1,0 +1,23 @@
+# 🚀 COMMANDS FOR SKSALAPUR'S GITHUB REPOSITORY
+
+# Step 1: Create repository at https://github.com/new
+# Repository name: gesture-recognition
+# Make it PUBLIC for free Streamlit hosting
+# Step 2: Commands are ready to run:
+
+cd "d:\PROJECTS & EXTRAS\SKILLCRAFT\4\gesture-recognition-deploy"
+git remote add origin https://github.com/sksalapur/gesture-recognition.git
+git push -u origin main
+
+# Step 3: After uploading code, go to GitHub repository → Releases → Create new release
+# - Upload: balanced_gesture_model.h5
+# - Tag: v1.0
+# - Title: Hand Gesture Recognition Model v1.0
+
+# Step 4: Deploy to Streamlit Cloud
+# - Go to: https://streamlit.io/cloud
+# - New app → Select your repository
+# - Main file: streamlit_app.py
+# - Deploy!
+
+# 🎉 Your app will be live at: https://your-app-name.streamlit.app
