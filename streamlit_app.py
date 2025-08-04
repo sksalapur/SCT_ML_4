@@ -72,22 +72,24 @@ def load_gesture_model():
         return None, f"❌ Error loading model: {str(e)}"
 
 def preprocess_image(image):
-    """Preprocess image for model prediction"""
+    """Preprocess image for model prediction - MUST match training preprocessing"""
     # Convert PIL to OpenCV format
     if isinstance(image, Image.Image):
         image = np.array(image)
         image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
     
-    # Resize to model input size
+    # Resize to model input size (224x224)
     resized = cv2.resize(image, (224, 224))
     
-    # Apply CLAHE for better contrast
-    lab = cv2.cvtColor(resized, cv2.COLOR_BGR2LAB)
-    lab[:,:,0] = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8)).apply(lab[:,:,0])
-    enhanced = cv2.cvtColor(lab, cv2.COLOR_LAB2BGR)
+    # Convert back to RGB for consistency with training
+    rgb_image = cv2.cvtColor(resized, cv2.COLOR_BGR2RGB)
     
-    # Normalize pixel values
-    normalized = enhanced.astype(np.float32) / 255.0
+    # DEBUG: Show preprocessed image
+    st.write("🔍 **Debug - Preprocessed Image:**")
+    st.image(rgb_image, caption="Preprocessed (224x224, RGB)", width=200)
+    
+    # Simple normalization ONLY (to match training: rescale=1./255)
+    normalized = rgb_image.astype(np.float32) / 255.0
     
     # Add batch dimension
     batch = np.expand_dims(normalized, axis=0)
@@ -100,6 +102,11 @@ def predict_gesture(model, image):
     
     processed = preprocess_image(image)
     predictions = model.predict(processed, verbose=0)
+    
+    # Debug: Show raw predictions
+    st.write("🔍 **Debug - Raw Predictions:**")
+    for i, (class_name, prob) in enumerate(zip(class_names, predictions[0])):
+        st.write(f"{class_name}: {prob:.4f}")
     
     predicted_idx = np.argmax(predictions)
     predicted_class = class_names[predicted_idx]
